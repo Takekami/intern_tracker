@@ -22,6 +22,25 @@ const TaskList = ({ tasks, setTasks, setEditingTask }) => {
           <h2 className="font-bold">{task.title}</h2>
           <p>{task.description}</p>
           <p className="text-sm text-gray-500">Deadline: {new Date(task.deadline).toLocaleDateString()}</p>
+          {/* add task status update button */}
+          <select
+            value={task.status}
+            onChange={async (e) => {
+              try {
+                const res = await axiosInstance.patch(`/api/tasks/${task._id}/status`, { status: e.target.value }, {
+                  headers: { Authorization: `Bearer ${user.token}` },
+                });
+                setTasks(tasks.map((t) => (t._id === task._id ? res.data : t)));
+              } catch (error) {
+                alert('Failed to update status.');
+              }
+            }}
+            className="mt-2 px-2 py-1 border rounded"
+          >
+            <option value="To Do">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+          </select>
           <div className="mt-2">
             <button
               onClick={() => setEditingTask(task)}
