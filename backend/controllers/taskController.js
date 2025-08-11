@@ -55,7 +55,7 @@ if (!task) return res.status(404).json({ message: 'Task not found'  });
 
 task.status = status || task.status;
 const updatedTask = await task.save();
-res.json(updatedTask);  
+res.json(updatedTask);
 }
 
 module.exports = { getTasks, addTask, updateTask, deleteTask, updateTaskStatus };
