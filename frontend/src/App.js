@@ -5,6 +5,8 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Tasks from './pages/Tasks';
 import Feedback from './pages/Feedback';
+import Reports from './pages/Reports';
+import ReportDetail from './pages/ReportDetail';
 
 function App() {
   return (
@@ -16,6 +18,8 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/feedback" element={<Feedback />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/reports/:internId" element={<ReportDetail />} />
       </Routes>
     </Router>
   );
