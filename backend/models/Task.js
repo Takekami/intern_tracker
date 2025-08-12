@@ -7,6 +7,7 @@ const taskSchema = new mongoose.Schema({
     description: { type: String },
     deadline: { type: Date },
     status: { type: String, enum: ['To Do', 'In Progress', 'Completed'], default: 'To Do' },
+    finalComment: { type: String },
 });
 
 module.exports = mongoose.model('Task', taskSchema);
