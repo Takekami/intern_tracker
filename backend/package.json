@@ -1,5 +1,5 @@
 {
-  "name": "task-manager-backend",
+  "name": "intern-tracker-backend",
   "version": "1.0.0",
   "description": "Backend for Task Manager App",
   "main": "server.js",
@@ -24,7 +24,7 @@
   "devDependencies": {
     "esm": "^3.2.25",
     "mocha": "^11.0.1",
-    "nodemon": "^2.0.15",
+    "nodemon": "^2.0.22",
     "sinon": "^19.0.2"
   },
   "author": "Task Manager Team",
