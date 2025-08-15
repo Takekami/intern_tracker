@@ -4,7 +4,12 @@ const { getFeedbacks, addFeedback, updateFeedback, deleteFeedback } = require('.
 const { protect } = require('../middleware/authMiddleware');
 const router = express.Router();
 
-router.route('/').get(protect, getFeedbacks).post(protect, addFeedback);
-router.route('/:id').put(protect, updateFeedback).delete(protect, deleteFeedback);
+router.route('/')
+  .get(protect, requireRole('mentor'), getFeedbacks)
+  .post(protect, requireRole('mentor'), addFeedback);
+
+router.route('/:id')
+  .put(protect, requireRole('mentor'), updateFeedback)
+  .delete(protect, requireRole('mentor'), deleteFeedback);
 
 module.exports = router;
