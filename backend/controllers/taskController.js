@@ -1,33 +1,43 @@
 const Task = require('../models/Task');
+const mongoose = require('mongoose');
 
 // Mentor: a list of tasks created by the mentor
 const getTasks = async (req, res) => {
   try {
-    const filter = req.user.role === 'mentor'
-      ? { userId: req.user._id }
-      : {};
-    const tasks = await Task.find(filter);
+    const filter = req.user.role === 'mentor' ? { userId: req.user._id } : {};
+    let query = Task.find(filter);
+
+    if (Task.schema.path('assignee')) {
+      query = query.populate('assignee', 'name email');
+    }
+
+    const tasks = await query.exec();
     res.json(tasks);
   } catch (error) {
+    console.error('[getTasks]', error);
     res.status(500).json({ message: error.message });
   }
 };
 
 // Mentor: create task
 const addTask = async (req, res) => {
-  const { title, description, deadline, assignee, status, completed } = req.body;
+  const { title, description, deadline, assignee } = req.body;
   try {
-    const task = await Task.create({
-      userId: req.user._id, // creator: mentor
-      title,
-      description,
-      deadline,
-      assignee,
-      status,
-      completed,
-    });
-    res.status(201).json(task);
+    const payload = { userId: req.user._id, title, description, deadline };
+
+    // assignee が送られてきたら ObjectId を検証
+    if (assignee !== undefined && assignee !== '') {
+      if (!mongoose.Types.ObjectId.isValid(assignee)) {
+        return res.status(400).json({ message: 'Invalid assignee id' });
+      }
+      payload.assignee = assignee;
+    }
+
+    const task = await Task.create(payload);
+    const populated = await task.populate({ path: 'assignee', select: 'name email' });
+    res.status(201).json(populated);
   } catch (error) {
+    console.error('[addTask]', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -49,11 +59,22 @@ const updateTask = async (req, res) => {
     task.completed = completed ?? task.completed;
     task.deadline = deadline ?? task.deadline;
     task.status = status ?? task.status;
-    task.assignee = assignee ?? task.assignee;
+
+    if (assignee !== undefined) {
+      if (assignee === '' || assignee === null) {
+        task.assignee = undefined;
+      } else if (!mongoose.Types.ObjectId.isValid(assignee)) {
+        return res.status(400).json({ message: 'Invalid assignee id' });
+      } else {
+        task.assignee = assignee;
+      }
+    }
 
     const updatedTask = await task.save();
-    res.json(updatedTask);
+    const populated = await updatedTask.populate({ path: 'assignee', select: 'name email' });
+    res.json(populated);
   } catch (error) {
+    console.error('[updateTask]', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -79,28 +100,20 @@ const deleteTask = async (req, res) => {
 // - Intern: only their own tasks
 // - Mentor: mentor can update only their created tasks
 const updateTaskStatus = async (req, res) => {
-  const { status, completed } = req.body;
-
+  const { status } = req.body;
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });
 
     if (req.user.role === 'intern') {
-      if (String(task.assignee) !== String(req.user._id)) {
-        return res.status(403).json({ message: 'Forbidden' });
-      }
-    } else if (req.user.role === 'mentor') {
-      // mentor can update only their created tasks
-      if (String(task.userId) !== String(req.user._id)) {
-        return res.status(403).json({ message: 'Forbidden' });
-      }
+      const isMine = task.assignee && String(task.assignee) === String(req.user._id);
+      if (!isMine) return res.status(403).json({ message: 'Only the assignee can update status' });
     }
 
-    if (status !== undefined) task.status = status;
-    if (completed !== undefined) task.completed = completed;
-
-    const updatedTask = await task.save();
-    res.json(updatedTask);
+    task.status = status;
+    task.completed = String(status).toLowerCase().startsWith('comp');
+    const updated = await task.save();
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

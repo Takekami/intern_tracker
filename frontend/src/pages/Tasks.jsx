@@ -1,55 +1,68 @@
 import { useState, useEffect, useMemo } from 'react';
-import axiosInstance from '../axiosConfig';
+import axios from '../axiosConfig';
 import TaskForm from '../components/TaskForm';
 import TaskList from '../components/TaskList';
 import { useAuth } from '../context/AuthContext';
 
-const Tasks = () => {
+const dedupeById = (arr = []) =>
+  Array.from(new Map(arr.map((t) => [t._id, t])).values());
+
+export default function Tasks() {
   const { user } = useAuth();
+  const role = user?.user?.role || user?.role;
+  const isMentor = role === 'mentor';
+
   const [tasks, setTasks] = useState([]);
   const [editingTask, setEditingTask] = useState(null);
-
-  const isMentor = user?.role === 'mentor';
-  const isIntern = user?.role === 'intern';
-
-  const listEndpoint = '/api/tasks';
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchTasks = async () => {
+    const run = async () => {
+      setLoading(true);
       try {
-        const response = await axiosInstance.get(listEndpoint, {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
-        setTasks(response.data);
-      } catch (error) {
-        alert('Failed to fetch tasks.');
+        const { data } = await axios.get('/api/tasks');
+        setTasks(dedupeById(data || []));
+      } catch (e) {
+        alert(e?.response?.data?.message || 'Failed to fetch tasks');
+      } finally {
+        setLoading(false);
       }
     };
-    if (user?.token) fetchTasks();
-  }, [user, listEndpoint]);
+    run();
+  }, []);
+
+  // Not have duplicate tasks
+  const upsertTask = (item) =>
+    setTasks((prev) => {
+      const map = new Map(prev.map((t) => [t._id, t]));
+      map.set(item._id, item);
+      return Array.from(map.values());
+    });
 
   return (
     <div className="container mx-auto p-6">
-      {/* Only Mentor. Add and edit tasks */}
       {isMentor && (
         <TaskForm
           tasks={tasks}
           setTasks={setTasks}
           editingTask={editingTask}
           setEditingTask={setEditingTask}
+          onSaved={upsertTask}
         />
       )}
 
-      {/* A list of task */}
-      <TaskList
-        tasks={tasks}
-        setTasks={setTasks}
-        setEditingTask={isMentor ? setEditingTask : () => {}}
-        readOnly={isIntern}
-        canUpdateStatus={isIntern}
-      />
+      {loading ? (
+        <div className="text-gray-500">Loading...</div>
+      ) : (
+        <TaskList
+          tasks={tasks}
+          setTasks={setTasks}
+          setEditingTask={setEditingTask}
+          canEdit={isMentor}
+          canDelete={isMentor}
+          canUpdateStatus={true} // Intern and mentor can update status
+        />
+      )}
     </div>
   );
-};
-
-export default Tasks;
+}
