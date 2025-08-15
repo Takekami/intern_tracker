@@ -11,13 +11,17 @@ import { useAuth } from './context/AuthContext';
 
 const PrivateRoute = ({ children }) => {
   const { user } = useAuth();
-  return user ? children : <Navigate to="/login" replace />;
+  const token = user?.token;
+  return token ? children : <Navigate to="/login" replace />;
 };
 
-const RoleRoute = ({ allow, children }) => {
+const RoleRoute = ({ allow = [], children }) => {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
-  return allow.includes(user.role) ? children : <Navigate to="/forbidden" replace />;
+  const role = user?.user?.role || user?.role;
+  const token = user?.token;
+  if (!token) return <Navigate to="/login" replace />;
+  if (!allow.includes(role)) return <Navigate to="/forbidden" replace />;
+  return children;
 };
 
 const Forbidden = () => <div style={{ padding: 24 }}>403 Forbidden</div>;
@@ -44,11 +48,9 @@ function App() {
         <Route
           path="/tasks"
           element={
-            <PrivateRoute>
               <RoleRoute allow={['mentor', 'intern']}>
                 <Tasks />
               </RoleRoute>
-            </PrivateRoute>
           }
         />
 
@@ -56,36 +58,31 @@ function App() {
         <Route
           path="/feedback"
           element={
-            <PrivateRoute>
               <RoleRoute allow={['mentor']}>
                 <Feedback />
               </RoleRoute>
-            </PrivateRoute>
           }
         />
         <Route
           path="/reports"
           element={
-            <PrivateRoute>
               <RoleRoute allow={['mentor']}>
                 <Reports />
               </RoleRoute>
-            </PrivateRoute>
           }
         />
         <Route
           path="/reports/:internId"
           element={
-            <PrivateRoute>
               <RoleRoute allow={['mentor']}>
                 <ReportDetail />
               </RoleRoute>
-            </PrivateRoute>
           }
         />
 
         <Route path="/forbidden" element={<Forbidden />} />
-        <Route path="*" element={<Navigate to="/profile" replace />} />
+        <Route path="/" element={<Navigate to="/tasks" replace />} />
+        <Route path="*" element={<Navigate to="/tasks" replace />} />
       </Routes>
     </Router>
   );

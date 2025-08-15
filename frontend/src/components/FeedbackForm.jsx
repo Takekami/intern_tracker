@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import axios from '../axiosConfig';
 import { useAuth } from '../context/AuthContext';
-import axiosInstance from '../axiosConfig';
 
-const FeedbackForm = ({ feedbacks, setFeedbacks, editingFeedback, setEditingFeedback }) => {
+export default function FeedbackForm({ feedbacks, setFeedbacks, editingFeedback, setEditingFeedback }) {
   const { user } = useAuth();
-  const [formData, setFormData] = useState({
-    mentorId: '',
+  const [tasks, setTasks] = useState([]);
+
+  const [form, setForm] = useState({
+    taskId: '',
     internId: '',
     weekStart: '',
     comment: '',
@@ -13,77 +15,85 @@ const FeedbackForm = ({ feedbacks, setFeedbacks, editingFeedback, setEditingFeed
   });
 
   useEffect(() => {
+    // For mentor （GET /api/tasks: mentor/intern）
+    axios.get('/api/tasks').then(r => setTasks(r.data || [])).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (editingFeedback) {
-      setFormData({
-        mentorId: editingFeedback.mentorId,
-        internId: editingFeedback.internId,
-        weekStart: editingFeedback.weekStart?.slice(0,10) || '',
-        comment: editingFeedback.comment,
-        score: editingFeedback.score,
+      setForm({
+        taskId: editingFeedback.taskId?._id || editingFeedback.taskId || '',
+        internId: editingFeedback.internId?._id || editingFeedback.internId || '',
+        weekStart: (editingFeedback.weekStart || '').slice(0, 10),
+        comment: editingFeedback.comment || '',
+        score: editingFeedback.score ?? 3,
       });
     } else {
-      setFormData({ mentorId: '', internId: '', weekStart: '', comment: '', score: 3 });
+      setForm({ taskId: '', internId: '', weekStart: '', comment: '', score: 3 });
     }
   }, [editingFeedback]);
 
-  const handleSubmit = async (e) => {
+  const onChangeTask = (e) => {
+    const tid = e.target.value;
+    const t = tasks.find(x => String(x._id) === String(tid));
+    const autoIntern = t?.assignee?._id || t?.assignee || '';
+    setForm(f => ({ ...f, taskId: tid, internId: autoIntern || f.internId }));
+  };
+
+  const submit = async (e) => {
     e.preventDefault();
-    try {
-      if (editingFeedback) {
-        const res = await axiosInstance.put(
-          `/api/feedback/${editingFeedback._id}`,
-          formData,
-          { headers: { Authorization: `Bearer ${user.token}` } }
-        );
-        setFeedbacks(feedbacks.map(f => (f._id === res.data._id ? res.data : f)));
-      } else {
-        const res = await axiosInstance.post(
-          '/api/feedback',
-          formData,
-          { headers: { Authorization: `Bearer ${user.token}` } }
-        );
-        setFeedbacks([...feedbacks, res.data]);
-      }
-      setEditingFeedback(null);
-      setFormData({ mentorId: '', internId: '', weekStart: '', comment: '', score: 3 });
-    } catch (err) {
-      alert('Failed to save feedback.');
+    const payload = Object.fromEntries(
+      Object.entries(form).filter(([_, v]) => v !== '' && v !== null && v !== undefined)
+    );
+    // mentorId is retrieved from server
+
+    if (editingFeedback) {
+      const { data } = await axios.put(`/api/feedback/${editingFeedback._id}`, payload);
+      setFeedbacks(feedbacks.map(f => (f._id === data._id ? data : f)));
+    } else {
+      const { data } = await axios.post('/api/feedback', payload);
+      setFeedbacks([...feedbacks, data]);
     }
+    setEditingFeedback(null);
+    setForm({ taskId: '', internId: '', weekStart: '', comment: '', score: 3 });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-6 shadow-md rounded mb-6">
-      <h1 className="text-2xl font-bold mb-4">
-        {editingFeedback ? 'Edit Feedback' : 'Add Feedback'}
-      </h1>
+    <form onSubmit={submit} className="bg-white p-6 shadow-md rounded mb-6">
+      <h1 className="text-2xl font-bold mb-4">{editingFeedback ? 'Edit Feedback' : 'Add Feedback'}</h1>
 
-      <input
-        type="text"
-        placeholder="Mentor ID"
-        value={formData.mentorId}
-        onChange={(e) => setFormData({ ...formData, mentorId: e.target.value })}
+      {/* Select Task */}
+      <select
+        value={form.taskId}
+        onChange={onChangeTask}
         className="w-full mb-4 p-2 border rounded"
-      />
+      >
+        <option value="">Select Task</option>
+        {tasks.map(t => (
+          <option key={t._id} value={t._id}>{t.title}</option>
+        ))}
+      </select>
 
+      {/* Intern ID */}
       <input
         type="text"
-        placeholder="Intern ID"
-        value={formData.internId}
-        onChange={(e) => setFormData({ ...formData, internId: e.target.value })}
+        placeholder="Intern ID (auto-filled from task if selected)"
+        value={form.internId}
+        onChange={(e) => setForm({ ...form, internId: e.target.value })}
         className="w-full mb-4 p-2 border rounded"
       />
 
       <input
         type="date"
-        value={formData.weekStart}
-        onChange={(e) => setFormData({ ...formData, weekStart: e.target.value })}
+        value={form.weekStart}
+        onChange={(e) => setForm({ ...form, weekStart: e.target.value })}
         className="w-full mb-4 p-2 border rounded"
       />
 
       <textarea
         placeholder="Comment"
-        value={formData.comment}
-        onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
+        value={form.comment}
+        onChange={(e) => setForm({ ...form, comment: e.target.value })}
         className="w-full mb-4 p-2 border rounded"
         rows={5}
       />
@@ -92,8 +102,8 @@ const FeedbackForm = ({ feedbacks, setFeedbacks, editingFeedback, setEditingFeed
         type="number"
         min="1"
         max="5"
-        value={formData.score}
-        onChange={(e) => setFormData({ ...formData, score: Number(e.target.value) })}
+        value={form.score}
+        onChange={(e) => setForm({ ...form, score: Number(e.target.value) })}
         className="w-full mb-4 p-2 border rounded"
       />
 
@@ -102,6 +112,4 @@ const FeedbackForm = ({ feedbacks, setFeedbacks, editingFeedback, setEditingFeed
       </button>
     </form>
   );
-};
-
-export default FeedbackForm;
+}

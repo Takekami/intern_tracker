@@ -1,74 +1,159 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import api from '../axiosConfig';
+import { useEffect, useMemo, useState } from 'react';
+import axios from '../axiosConfig';
 import { useAuth } from '../context/AuthContext';
 
-const ProgressBar = ({ value }) => (
-  <div className="w-40 bg-gray-200 rounded-full h-3">
-    <div className="h-3 rounded-full" style={{ width: `${value}%` }} />
-    <div className="text-sm mt-1">{value}%</div>
-  </div>
-);
+const dedupeById = (arr = []) =>
+  Array.from(new Map(arr.map((x) => [x._id, x])).values());
+
+const normalizeStatus = (status, completed) => {
+  if (typeof status === 'string') {
+    const s = status.toLowerCase().trim();
+    if (s.startsWith('to')) return 'To Do';
+    if (s.startsWith('in')) return 'In Progress';
+    if (s.startsWith('comp')) return 'Completed';
+  }
+  if (completed === true) return 'Completed';
+  return 'To Do';
+};
+
+const ProgressBar = ({ counts }) => {
+  const total = counts.todo + counts.inprogress + counts.completed || 1;
+  const pct = (n) => Math.round((n / total) * 100);
+  return (
+    <div className="w-full bg-gray-200 rounded h-6 overflow-hidden flex">
+      <div className="h-full bg-gray-400" style={{ width: `${pct(counts.todo)}%` }} title={`To Do ${counts.todo}`} />
+      <div className="h-full bg-blue-500" style={{ width: `${pct(counts.inprogress)}%` }} title={`In Progress ${counts.inprogress}`} />
+      <div className="h-full bg-green-500" style={{ width: `${pct(counts.completed)}%` }} title={`Completed ${counts.completed}`} />
+    </div>
+  );
+};
 
 export default function Reports() {
-  const { user } = useAuth();
-  const [rows, setRows] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(()=> {
-    if (!user?.token) return;
-
+  useEffect(() => {
     (async () => {
+      setLoading(true);
       try {
-        const { data } = await api.get('/api/reports', {
-          headers: { Authorization: `Bearer ${user.token}` }
-        });
-        setRows(data);
+        const [{ data: t }, { data: f }] = await Promise.all([
+          axios.get('/api/tasks'),
+          axios.get('/api/feedback'),
+        ]);
+        setTasks(dedupeById(t || []));
+        setFeedbacks(f || []);
       } catch (e) {
-        console.error(e);
-        alert(`Failed to load reports (${e?.response?.status ?? 'no status'})`);
+        alert(e?.response?.data?.message || 'Failed to load reports data');
       } finally {
         setLoading(false);
       }
     })();
-  }, [user]);
+  }, []);
 
-  if (loading) return <div className="p-4">Loading…</div>;
+  const latestFbByTask = useMemo(() => {
+    const m = new Map();
+    for (const fb of feedbacks || []) {
+      const key = fb?.taskId?._id || fb?.taskId;
+      if (!key) continue;
+      const prev = m.get(String(key));
+      const prevTime = prev ? new Date(prev.weekStart || prev.createdAt || 0).getTime() : -1;
+      const curTime = new Date(fb.weekStart || fb.createdAt || 0).getTime();
+      if (!prev || curTime > prevTime) m.set(String(key), fb);
+    }
+    return m;
+  }, [feedbacks]);
+
+  const latestFbByIntern = useMemo(() => {
+    const map = new Map();
+    for (const fb of feedbacks || []) {
+      const key =
+        fb.internId ||
+        fb.intern?._id ||
+        fb.intern ||
+        null;
+      if (!key) continue;
+
+      const prev = map.get(String(key));
+      const prevTime = prev ? new Date(prev.weekStart || prev.createdAt || 0).getTime() : -1;
+      const curTime = new Date(fb.weekStart || fb.createdAt || 0).getTime();
+      if (!prev || curTime > prevTime) map.set(String(key), fb);
+    }
+    return map;
+  }, [feedbacks]);
+
+  const rows = useMemo(() => {
+    return (tasks || []).map((t) => {
+      const status = normalizeStatus(t.status, t.completed);
+      const latestFb = latestFbByTask.get(String(t._id));
+      return {
+        id: t._id,
+        title: t.title,
+        assignee: t.assignee?.name || t.assignee?.email || '—',
+        status,
+        due: t.deadline ? new Date(t.deadline).toLocaleDateString() : '—',
+        latestComment: latestFb?.comment || '—',
+        latestScore: latestFb?.score ?? '—',
+      };
+    });
+  }, [tasks, latestFbByTask]);
+
+  const counts = useMemo(() => {
+    const c = { 'To Do': 0, 'In Progress': 0, 'Completed': 0 };
+    for (const r of rows) c[r.status] = (c[r.status] || 0) + 1;
+    return c;
+  }, [rows]);
+
+  const total = rows.length;
+  const donePct = total ? Math.round((counts['Completed'] / total) * 100) : 0;
+  const workPct = total ? 100 - donePct : 0;
 
   return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">Performance Reports</h1>
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="text-left border-b">
-              <th className="p-2">Intern</th>
-              <th className="p-2">Progress</th>
-              <th className="p-2">Avg Score</th>
-              <th className="p-2">Last Feedback</th>
-              <th className="p-2">Final Comment</th>
-              <th className="p-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(r => (
-              <tr key={r.intern.id} className="border-b hover:bg-gray-50">
-                <td className="p-2">{r.intern.name || '-'}</td>
-                <td className="p-2"><ProgressBar value={r.progress} /></td>
-                <td className="p-2">{r.avgScore ?? '-'}</td>
-                <td className="p-2">{r.lastFeedbackAt ? new Date(r.lastFeedbackAt).toLocaleDateString() : '-'}</td>
-                <td className="p-2 truncate max-w-[260px]" title={r.finalComment}>{r.finalComment}</td>
-                <td className="p-2">
-                  <Link className="text-blue-600 underline" to={`/reports/${r.intern.id}`}>View</Link>
-                </td>
-              </tr>
-            ))}
-            {!rows.length && (
-              <tr><td className="p-2 text-gray-500" colSpan={6}>No interns found.</td></tr>
-            )}
-          </tbody>
-        </table>
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-2">Dashboard (Reports)</h1>
+      <div className="text-gray-600 mb-3">
+        To Do: {counts['To Do'] ?? 0} / In Progress: {counts['In Progress'] ?? 0} / Completed: {counts['Completed'] ?? 0}
       </div>
+
+      {/* progress bar */}
+      <div className="w-full h-6 bg-gray-300 rounded overflow-hidden mb-6">
+        <div className="h-6 bg-gray-400 inline-block align-top" style={{ width: `${workPct}%` }} />
+        <div className="h-6 bg-blue-500 inline-block align-top" style={{ width: `${donePct}%` }} />
+      </div>
+
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        <div className="overflow-x-auto bg-white shadow rounded">
+          <table className="min-w-full">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="text-left p-3">Task</th>
+                <th className="text-left p-3">Assignee</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">Due</th>
+                <th className="text-left p-3">Latest Feedback</th>
+                <th className="text-left p-3">Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="border-t">
+                  <td className="p-3">{r.title}</td>
+                  <td className="p-3">{r.assignee}</td>
+                  <td className="p-3">{r.status}</td>
+                  <td className="p-3">{r.due}</td>
+                  <td className="p-3">{r.latestComment}</td>
+                  <td className="p-3">{r.latestScore}</td>
+                </tr>
+              ))}
+              {!rows.length && (
+                <tr><td colSpan={6} className="p-4 text-gray-500">No data</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
