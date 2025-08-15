@@ -11,9 +11,8 @@ concurrency:
 jobs:
   test:
     runs-on: self-hosted
-    timeout-minutes: 25
-    strategy:
-      matrix: { node-version: [22] }
+    environment:
+      name: MONGO_URI
 
     steps:
       - uses: actions/checkout@v4
@@ -29,7 +28,6 @@ jobs:
       - name: Enable Corepack (Yarn)
         run: corepack enable
 
-      # --- .env をテスト前に作る ---
       - name: Create backend .env from secrets
         working-directory: ./backend
         run: |
@@ -56,7 +54,6 @@ jobs:
           node -e "console.log('MONGO len:', (process.env.MONGO_URI||'').length)"  # 長さだけ確認
           yarn test
 
-      # ---- 以下はデプロイ（必要なら）----
       - name: Install frontend deps
         working-directory: ./frontend
         run: yarn install --frozen-lockfile
