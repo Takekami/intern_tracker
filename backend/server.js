@@ -24,10 +24,6 @@ app.use('/api/reports', reportRoutes);
 
 // Export the app object for testing
 if (require.main === module) {
-  if (!process.env.MONGO_URI) {
-    console.error('FATAL: MONGO_URI is not set (env or backend/.env).');
-    process.exit(1);
-  }
   connectDB();
   const PORT = process.env.PORT || 5001;
   app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
