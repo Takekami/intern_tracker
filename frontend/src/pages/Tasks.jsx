@@ -12,10 +12,7 @@ const Tasks = () => {
   const isMentor = user?.role === 'mentor';
   const isIntern = user?.role === 'intern';
 
-  const listEndpoint = useMemo(
-    () => (isMentor ? '/api/tasks' : '/api/intern/tasks/my'),
-    [isMentor]
-  );
+  const listEndpoint = '/api/tasks';
 
   useEffect(() => {
     const fetchTasks = async () => {

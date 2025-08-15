@@ -17,8 +17,6 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
 app.use('/api/feedback', require('./routes/feedbackRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
-// only intern
-app.use('/api/intern/tasks', require('./routes/internTaskRoutes'));
 
 // Export the app object for testing
 if (require.main === module) {

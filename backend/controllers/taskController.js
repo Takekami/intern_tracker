@@ -3,7 +3,10 @@ const Task = require('../models/Task');
 // Mentor: a list of tasks created by the mentor
 const getTasks = async (req, res) => {
   try {
-    const tasks = await Task.find({ userId: req.user._id });
+    const filter = req.user.role === 'mentor'
+      ? { userId: req.user._id }
+      : {};
+    const tasks = await Task.find(filter);
     res.json(tasks);
   } catch (error) {
     res.status(500).json({ message: error.message });
