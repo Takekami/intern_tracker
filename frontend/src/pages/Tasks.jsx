@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import axiosInstance from '../axiosConfig';
 import TaskForm from '../components/TaskForm';
 import TaskList from '../components/TaskList';
@@ -9,10 +9,15 @@ const Tasks = () => {
   const [tasks, setTasks] = useState([]);
   const [editingTask, setEditingTask] = useState(null);
 
+  const isMentor = user?.role === 'mentor';
+  const isIntern = user?.role === 'intern';
+
+  const listEndpoint = '/api/tasks';
+
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const response = await axiosInstance.get('/api/tasks', {
+        const response = await axiosInstance.get(listEndpoint, {
           headers: { Authorization: `Bearer ${user.token}` },
         });
         setTasks(response.data);
@@ -20,19 +25,29 @@ const Tasks = () => {
         alert('Failed to fetch tasks.');
       }
     };
-
-    fetchTasks();
-  }, [user]);
+    if (user?.token) fetchTasks();
+  }, [user, listEndpoint]);
 
   return (
     <div className="container mx-auto p-6">
-      <TaskForm
+      {/* Only Mentor. Add and edit tasks */}
+      {isMentor && (
+        <TaskForm
+          tasks={tasks}
+          setTasks={setTasks}
+          editingTask={editingTask}
+          setEditingTask={setEditingTask}
+        />
+      )}
+
+      {/* A list of task */}
+      <TaskList
         tasks={tasks}
         setTasks={setTasks}
-        editingTask={editingTask}
-        setEditingTask={setEditingTask}
+        setEditingTask={isMentor ? setEditingTask : () => {}}
+        readOnly={isIntern}
+        canUpdateStatus={isIntern}
       />
-      <TaskList tasks={tasks} setTasks={setTasks} setEditingTask={setEditingTask} />
     </div>
   );
 };

@@ -16,9 +16,18 @@ const Navbar = () => {
       <div>
         {user ? (
           <>
+            {/* Both role */}
             <Link to="/tasks" className="mr-4">Tasks</Link>
-            <Link to="/feedback" className="mr-4">Feedbacks</Link>
-            <Link to="/reports" className="mr-4">Reports</Link>
+
+            {/* Only Mentor */}
+            {user.role === 'mentor' && (
+              <>
+                <Link to="/feedback" className="mr-4">Feedbacks</Link>
+                <Link to="/reports" className="mr-4">Reports</Link>
+              </>
+            )}
+
+            {/* Both */}
             <Link to="/profile" className="mr-4">Profile</Link>
             <button
               onClick={handleLogout}
