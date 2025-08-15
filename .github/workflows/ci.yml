@@ -45,11 +45,13 @@ jobs:
       - name: Create backend .env from secrets
         working-directory: ./backend
         run: |
-          cat > .env <<'EOF'
-          MONGO_URI=${{ secrets.MONGO_URI }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          PORT=${{ secrets.PORT }}
-          EOF
+          set -euo pipefail
+          : > .env
+          printf "MONGO_URI=%s\n" "${{ secrets.MONGO_URI }}" >> .env
+          printf "JWT_SECRET=%s\n" "${{ secrets.JWT_SECRET }}" >> .env
+          printf "PORT=%s\n"       "${{ secrets.PORT }}"       >> .env
+          awk -F= '{print "KEY:", $1}' .env
+
 
       - name: Install backend deps
         working-directory: ./backend
