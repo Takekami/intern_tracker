@@ -1,7 +1,6 @@
 const path = require('path');
 require('dotenv').config({
   path: path.join(__dirname, '.env'),
-  // debug: true,
 });
 
 const express = require('express');
@@ -25,6 +24,12 @@ app.use('/api/reports', reportRoutes);
 
 // Export the app object for testing
 if (require.main === module) {
+  const mongo = process.env.MONGO_URI;
+  if (!mongo) {
+    console.error('FATAL: MONGO_URI is not set (env or backend/.env).');
+    process.exit(1);
+  }
+
   connectDB();
 
   const PORT = process.env.PORT || 5001;
