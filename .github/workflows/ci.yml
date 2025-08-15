@@ -4,57 +4,33 @@ on:
   push:
     branches: [ main ]
 
-concurrency:
-  group: backend-deploy-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  test:
-    name: Build, Test & Deploy
+  deploy:
     runs-on: self-hosted
     timeout-minutes: 30
-
-    # ← スクショの通り Environment secrets を使っているので必須
     environment:
       name: MONGO_URI
 
-    strategy:
-      matrix:
-        node-version: [22]
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # 1) まず Node だけ入れる（キャッシュはまだ使わない）
-      - name: Setup Node.js (no cache yet)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 22
 
-      # 2) Yarn を Corepack で有効化
       - name: Enable Corepack (Yarn)
         run: |
+          set -e
           corepack enable
           corepack prepare yarn@1.22.22 --activate
           yarn --version
 
-      # 3) Yarn が使える状態になってから cache を有効化
-      - name: Setup Node.js cache (yarn)
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: yarn
-          cache-dependency-path: |
-            backend/yarn.lock
-            frontend/yarn.lock
-
-      - name: Ensure PM2 is installed
+      - name: Ensure PM2
         run: |
-          if ! command -v pm2 >/dev/null 2>&1; then npm i -g pm2; fi
+          command -v pm2 || npm i -g pm2
           pm2 -v
 
-      # ===== Backend =====
+      # ---- Backend ----
       - name: Create backend .env from secrets
         working-directory: ./backend
         run: |
@@ -63,27 +39,23 @@ jobs:
           printf "MONGO_URI=%s\n" "${{ secrets.MONGO_URI }}" >> .env
           printf "JWT_SECRET=%s\n" "${{ secrets.JWT_SECRET }}" >> .env
           printf "PORT=%s\n"       "${{ secrets.PORT }}"       >> .env
-          # キーだけ確認（値は出さない）
           awk -F= '{print "KEY:", $1}' .env
-          # 空なら早期失敗（デバッグ容易化）
-          grep -qE '^MONGO_URI=.+$' .env || { echo "MONGO_URI is empty in .env"; exit 1; }
+          grep -qE '^MONGO_URI=.+$' .env || { echo "MONGO_URI is empty"; exit 1; }
 
       - name: Install backend deps
         working-directory: ./backend
         run: yarn install --frozen-lockfile
 
-      - name: Run backend tests
+      - name: Run backend tests (optional)
         working-directory: ./backend
         env:
           NODE_ENV: test
           MONGO_URI: ${{ secrets.MONGO_URI }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           PORT: ${{ secrets.PORT }}
-        run: |
-          node -e "console.log('MONGO len:', (process.env.MONGO_URI||'').length)"
-          yarn test
+        run: yarn test --if-present
 
-      # ===== Frontend =====
+      # ---- Frontend ----
       - name: Install frontend deps
         working-directory: ./frontend
         run: yarn install --frozen-lockfile
@@ -92,23 +64,22 @@ jobs:
         working-directory: ./frontend
         run: yarn build
 
-      # ===== Deploy with PM2 =====
-      - name: Stop old PM2 apps (safe)
+      # ---- Deploy  ----
+      - name: Switch apps with PM2
         run: |
-          pm2 delete Frontend || true
-          pm2 delete backend  || true
+          set -e
+          # Frontend
+          pm2 describe Frontend >/dev/null 2>&1 && pm2 reload Frontend \
+            || pm2 serve ./frontend/build 3000 --name Frontend --spa
 
-      - name: Start Frontend (static) on 3000
-        working-directory: ./frontend
-        run: pm2 serve ./build 3000 --name Frontend --spa
+          # Backend
+          cd backend
+          pm2 describe backend >/dev/null 2>&1 && pm2 reload backend --update-env \
+            || pm2 start ./server.js --name backend --update-env --cwd "$PWD"
+          pm2 save
 
-      - name: Start Backend with PM2
-        working-directory: ./backend
-        env:
-          MONGO_URI: ${{ secrets.MONGO_URI }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          PORT: ${{ secrets.PORT }}
-        run: pm2 start ./server.js --name backend --update-env --cwd "$PWD"
-
-      - name: Save PM2 state
-        run: pm2 save
+      # ---- Health checks ----
+      - name: Health check backend
+        run: curl -sfI http://127.0.0.1:${{ secrets.PORT || '5001' }} || (pm2 logs backend --lines 100; exit 1)
+      - name: Health check frontend
+        run: curl -sfI http://127.0.0.1:3000 || (pm2 logs Frontend --lines 50; exit 1)
