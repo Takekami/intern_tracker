@@ -1,26 +1,66 @@
-**Task Manager Application Overview:The task manager application is designed to help users efficiently manage their tasks and responsibilities by providing a user-friendly interface for creating, viewing, updating, and deleting tasks. It includes essential features such as secure user authentication, allowing individuals to sign up and log in to their accounts, as well as profile management to update personal information. With built-in validation such as input field validation and email validation, the application ensures a seamless user experience while enhancing productivity and organization in both personal and professional settings. **
+**Remote Intern Management System**
+Role-based app for mentors to manage remote interns (tasks, feedback, reports).
 
-**This apps **contain** the following features:**
+**Live**
+* EC2 instance Public IP: http://13.55.160.228
+* Demo user:
+  Mentor:
+    email: mentor@interntracker.com, password: mentor
+  
+  Intern:
+    email: intern@intern.com, password: intern
 
-* Signup
-* Login
-* Logout
-* Update profile
-* Add tasks
-* View tasks
-* Update tasks
-* Delete tasks
+**Quick Start**
+git clone https://github.com/Takekami/intern_tracker.git
+cd intern_tracker
 
-**This **app**lication** is**almost **a** precompiled** app**. However, students will develop some features,**such as adding tasks, viewing tasks, updating tasks, and **deleting** tasks**. **Students** will interact with GitHub when they develop the features.**
+**Backend**
+cd backend
+cp .env
+npm i
+npm run dev
 
----
+**Frontend**
+cd frontend
+cp .env
+npm i
+npm run dev
 
-**Prerequisite:** Please install the following software and create account in following web tools** **
+**What's in it**
+Tasks (CRUD): mentor adds/edits/assigns/deletes; intern updates their own task status
+Feedback (CRUD): mentor submits/edits/deletes; latest score and comment shown in reports.
+Auth & Roles: role-guarded API/UI (Mentor and Intern). If email domain is @interntracker.com -> mentor, other -> intern
+Reports: Progress bar of task status (To Do, In Progress, Completed) and table (Task/Assignee/Status/Due/Latest Feedback/Score).
 
-* **Nodejs [**[https://nodejs.org/en](https://nodejs.org/en)]** **
-* **Git [**[https://git-scm.com/](https://git-scm.com/)]** **
-* **VS code editor** [[https://code.visualstudio.com/](https://code.visualstudio.com/)]** **
-* **MongoDB Account** [[https://account.mongodb.com/account/login](https://account.mongodb.com/account/login)]** - In tutorial, we have also showed how can you create account and database: follow step number 2.**
-* **GitHub Account** [[https://github.com/signup?source=login](https://github.com/signup?source=login)]** **
+**Minimal API**
+AUTH
+POST /api/auth/register
+POST /api/auth/login
+GET /api/auth/profile
+PUT /api/auth/profile
+GET /api/auth/interns
 
----
+Tasks
+GET /api/tasks
+POST /api/tasks
+PUT /api/tasks/:id
+DELETE /api/tasks/:id
+PATCH /api/tasks/:id/status
+
+Feedbacks
+GET /api/feedback?taskId=&internId=
+POST /api/feedback
+PUT /api/feedback/:id
+DELETE /api/feedback/:id
+
+Reports
+GET /api/reports
+GET /api/reports/:internId
+PUT /api/reports/:internId/final-comment
+
+**Links for marking**
+Jira : https://tkykmurakami.atlassian.net/jira/software/projects/INTERN/summary
+EC2 Instance Link: https://ap-southeast-2.console.aws.amazon.com/ec2/home?region=ap-southeast-2#InstanceDetails:instanceId=i-023258e7a95bdaee7
+GitHub: https://github.com/Takekami/intern_tracker
+CI/CD: https://github.com/Takekami/intern_tracker/blob/main/.github/workflows/ci.yml
+

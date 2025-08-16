@@ -7,7 +7,7 @@ const generateToken = (id) =>
 
 /**
  * POST /api/auth/register
- * if email domain is interntracker.com >> mentor、other >> intern
+ * if email domain is interntracker.com >> mentor, other >> intern
  */
 exports.registerUser = async (req, res) => {
     const { name, email, password, university, address } = req.body;
