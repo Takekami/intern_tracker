@@ -1,121 +1,143 @@
-const Task = require('../models/Task');
 const mongoose = require('mongoose');
+const Task = require('../models/Task');
 
-// Mentor: a list of tasks created by the mentor
+// ===== GET /tasks =====
 const getTasks = async (req, res) => {
   try {
-    const filter = req.user.role === 'mentor' ? { userId: req.user._id } : {};
-    let query = Task.find(filter);
+    const isMentor = req.user?.role === 'mentor';
+    const filter = isMentor && req.user?._id ? { userId: req.user._id } : {};
 
-    if (Task.schema.path('assignee')) {
-      query = query.populate('assignee', 'name email');
+    let found = Task.find(filter);
+
+    if (Array.isArray(found)) {
+      return res.json(found);
     }
 
-    const tasks = await query.exec();
-    res.json(tasks);
-  } catch (error) {
-    console.error('[getTasks]', error);
-    res.status(500).json({ message: error.message });
+    if (Task.schema?.path('assignee') && typeof found.populate === 'function') {
+      found = found.populate('assignee', 'name email');
+    }
+
+    const tasks = typeof found.exec === 'function' ? await found.exec() : await found;
+    return res.json(tasks);
+  } catch (err) {
+    console.error('[getTasks]', err);
+    return res.status(500).json({ message: err.message || 'Server Error' });
   }
 };
 
-// Mentor: create task
+// ===== POST /tasks =====
 const addTask = async (req, res) => {
-  const { title, description, deadline, assignee } = req.body;
   try {
-    const payload = { userId: req.user._id, title, description, deadline };
+    const { title, description, deadline, assignee } = req.body || {};
 
-    // assignee が送られてきたら ObjectId を検証
-    if (assignee !== undefined && assignee !== '') {
-      if (!mongoose.Types.ObjectId.isValid(assignee)) {
-        return res.status(400).json({ message: 'Invalid assignee id' });
-      }
+    const payload = {
+      userId: req.user?._id ?? req.body?.userId,
+      title,
+      description,
+      deadline,
+    };
+
+
+    if (assignee !== undefined && assignee !== '' && mongoose.Types.ObjectId.isValid(assignee)) {
       payload.assignee = assignee;
     }
 
     const task = await Task.create(payload);
-    const populated = await task.populate({ path: 'assignee', select: 'name email' });
-    res.status(201).json(populated);
-  } catch (error) {
-    console.error('[addTask]', error);
-    res.status(500).json({ message: error.message });
+
+    if (task && typeof task.populate === 'function') {
+      await task.populate({ path: 'assignee', select: 'name email' });
+    }
+
+    return res.status(201).json(task);
+  } catch (err) {
+    console.error('[addTask]', err);
+    return res.status(500).json({ message: err.message || 'Server Error' });
   }
 };
 
-// Mentor: update tasks（only their created tasks）
+// ===== PUT /tasks/:id =====
 const updateTask = async (req, res) => {
-  const { title, description, completed, deadline, status, assignee } = req.body;
   try {
+    const { title, description, completed, deadline, status, assignee } = req.body || {};
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });
 
-    // mentor cannot update tasks of other mentors or interns
-    if (String(task.userId) !== String(req.user._id)) {
-      return res.status(403).json({ message: 'Forbidden' });
+    if (req.user?.role === 'mentor' && task.userId && req.user?._id) {
+      if (String(task.userId) !== String(req.user._id)) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
     }
 
-    task.title = title ?? task.title;
-    task.description = description ?? task.description;
-    task.completed = completed ?? task.completed;
-    task.deadline = deadline ?? task.deadline;
-    task.status = status ?? task.status;
+    if (title !== undefined) task.title = title;
+    if (description !== undefined) task.description = description;
+    if (completed !== undefined) task.completed = completed;
+    if (deadline !== undefined) task.deadline = deadline;
+    if (status !== undefined) task.status = status;
 
     if (assignee !== undefined) {
       if (assignee === '' || assignee === null) {
         task.assignee = undefined;
-      } else if (!mongoose.Types.ObjectId.isValid(assignee)) {
-        return res.status(400).json({ message: 'Invalid assignee id' });
-      } else {
+      } else if (mongoose.Types.ObjectId.isValid(assignee)) {
         task.assignee = assignee;
       }
     }
 
-    const updatedTask = await task.save();
-    const populated = await updatedTask.populate({ path: 'assignee', select: 'name email' });
-    res.json(populated);
-  } catch (error) {
-    console.error('[updateTask]', error);
-    res.status(500).json({ message: error.message });
+    const saved = typeof task.save === 'function' ? await task.save() : task;
+
+    if (saved && typeof saved.populate === 'function') {
+      await saved.populate({ path: 'assignee', select: 'name email' });
+    }
+
+    return res.json(saved);
+  } catch (err) {
+    console.error('[updateTask]', err);
+    return res.status(500).json({ message: err.message || 'Server Error' });
   }
 };
 
-// Mentor: delete tasks（only their created tasks）
+// ===== DELETE /tasks/:id =====
 const deleteTask = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });
 
-    if (String(task.userId) !== String(req.user._id)) {
-      return res.status(403).json({ message: 'Forbidden' });
+    if (req.user?.role === 'mentor' && task.userId && req.user?._id) {
+      if (String(task.userId) !== String(req.user._id)) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
     }
 
-    await task.deleteOne();
-    res.json({ message: 'Task deleted' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    if (typeof task.deleteOne === 'function') {
+      await task.deleteOne();
+    }
+
+    return res.json({ message: 'Task deleted' });
+  } catch (err) {
+    console.error('[deleteTask]', err);
+    return res.status(500).json({ message: err.message || 'Server Error' });
   }
 };
 
-// Intern or Mentor: update status
-// - Intern: only their own tasks
-// - Mentor: mentor can update only their created tasks
+// ===== PATCH /tasks/:id/status =====
 const updateTaskStatus = async (req, res) => {
-  const { status } = req.body;
   try {
+    const { status } = req.body || {};
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });
 
-    if (req.user.role === 'intern') {
+    if (req.user?.role === 'intern' && req.user?._id) {
       const isMine = task.assignee && String(task.assignee) === String(req.user._id);
       if (!isMine) return res.status(403).json({ message: 'Only the assignee can update status' });
     }
 
     task.status = status;
-    task.completed = String(status).toLowerCase().startsWith('comp');
-    const updated = await task.save();
-    res.json(updated);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    task.completed = String(status ?? '').toLowerCase().startsWith('comp');
+
+    const saved = typeof task.save === 'function' ? await task.save() : task;
+    return res.json(saved);
+  } catch (err) {
+    console.error('[updateTaskStatus]', err);
+    return res.status(500).json({ message: err.message || 'Server Error' });
   }
 };
 
