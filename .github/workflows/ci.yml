@@ -2,8 +2,8 @@ name: Backend CI
 
 on:
   push:
-    branches: [ main ] # Trigger CI on pushes to the main branch
-  workflow_dispatch:
+    branches:
+      - main  # Trigger CI on pushes to the main branch
 
 jobs:
   test:
