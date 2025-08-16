@@ -19,18 +19,6 @@ Role-based app for mentors to manage remote interns (tasks, feedback, reports).
 * git clone https://github.com/Takekami/intern_tracker.git
 * cd intern_tracker
 
-**Backend**
-* cd backend
-* cp .env
-* npm i
-* npm run dev
-
-**Frontend**
-* cd frontend
-* cp .env
-* npm i
-* npm run dev
-
 **What's in it**
 
 * Tasks (CRUD): mentor adds/edits/assigns/deletes; intern updates their own task status
