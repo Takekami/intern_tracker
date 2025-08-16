@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from '../axiosConfig';
-import { useAuth } from '../context/AuthContext';
 
 const dedupeById = (arr = []) =>
   Array.from(new Map(arr.map((x) => [x._id, x])).values());
@@ -16,17 +15,6 @@ const normalizeStatus = (status, completed) => {
   return 'To Do';
 };
 
-const ProgressBar = ({ counts }) => {
-  const total = counts.todo + counts.inprogress + counts.completed || 1;
-  const pct = (n) => Math.round((n / total) * 100);
-  return (
-    <div className="w-full bg-gray-200 rounded h-6 overflow-hidden flex">
-      <div className="h-full bg-gray-400" style={{ width: `${pct(counts.todo)}%` }} title={`To Do ${counts.todo}`} />
-      <div className="h-full bg-blue-500" style={{ width: `${pct(counts.inprogress)}%` }} title={`In Progress ${counts.inprogress}`} />
-      <div className="h-full bg-green-500" style={{ width: `${pct(counts.completed)}%` }} title={`Completed ${counts.completed}`} />
-    </div>
-  );
-};
 
 export default function Reports() {
   const [tasks, setTasks] = useState([]);
@@ -64,23 +52,6 @@ export default function Reports() {
     return m;
   }, [feedbacks]);
 
-  const latestFbByIntern = useMemo(() => {
-    const map = new Map();
-    for (const fb of feedbacks || []) {
-      const key =
-        fb.internId ||
-        fb.intern?._id ||
-        fb.intern ||
-        null;
-      if (!key) continue;
-
-      const prev = map.get(String(key));
-      const prevTime = prev ? new Date(prev.weekStart || prev.createdAt || 0).getTime() : -1;
-      const curTime = new Date(fb.weekStart || fb.createdAt || 0).getTime();
-      if (!prev || curTime > prevTime) map.set(String(key), fb);
-    }
-    return map;
-  }, [feedbacks]);
 
   const rows = useMemo(() => {
     return (tasks || []).map((t) => {

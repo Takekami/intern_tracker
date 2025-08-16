@@ -18,11 +18,6 @@ export default function FeedbackList({ feedbacks, setFeedbacks, setEditingFeedba
       <h2 className="text-2xl font-bold mb-4">Feedback List</h2>
 
       {feedbacks.map((item) => {
-        const taskLabel = item?.taskId?.title
-          ? `Task: ${item.taskId.title}`
-          : item?.taskId
-            ? `Task: ${item.taskId}`
-            : '—';
 
         const mentorLabel = item?.mentorId?.name || item?.mentorId?.email || '—';
         const internLabel = item?.internId?.name || item?.internId?.email || '—';

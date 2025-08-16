@@ -3,7 +3,6 @@ import axios from '../axiosConfig';
 import { useAuth } from '../context/AuthContext';
 
 export default function FeedbackForm({ feedbacks, setFeedbacks, editingFeedback, setEditingFeedback }) {
-  const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
 
   const [form, setForm] = useState({
