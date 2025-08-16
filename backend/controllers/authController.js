@@ -5,10 +5,8 @@ const User = require('../models/User');
 const generateToken = (id) =>
     jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '12h' });
 
-/**
- * POST /api/auth/register
- * if email domain is interntracker.com >> mentor, other >> intern
- */
+// POST /api/auth/register
+// if email domain is interntracker.com >> mentor, other >> intern
 exports.registerUser = async (req, res) => {
     const { name, email, password, university, address } = req.body;
 
@@ -70,7 +68,7 @@ exports.updateUserProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const { name, password } = req.body; // ← university/address は扱わない
+    const { name, password } = req.body;
     if (name !== undefined) user.name = name;
     if (password) user.password = password;
 

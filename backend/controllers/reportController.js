@@ -8,7 +8,7 @@ const toObjectId = (id) => {
   catch { return null; }
 };
 
-/** Progress rate = done / total (0% if there are no tasks) */
+// Progress rate = completed / total (0% if there are no tasks)
 async function calcProgress(internId) {
   const oid = toObjectId(internId);
   if (!oid) return 0;
@@ -21,7 +21,7 @@ async function calcProgress(internId) {
   return Math.round((100 * done) / total);
 }
 
-/** GET /api/reports  List of interns in charge (progress/average score/final FB date/final comment) */
+// GET /api/reports
 exports.getReports = async (req, res) => {
   try {
     const mentorKey = String(req.user._id); 
@@ -61,7 +61,7 @@ exports.getReports = async (req, res) => {
   }
 };
 
-/** GET /api/reports/:internId  Individual details (history + summary) */
+// GET /api/reports/:internId
 exports.getReportDetail = async (req, res) => {
   try {
     const { internId } = req.params;
@@ -101,7 +101,7 @@ exports.getReportDetail = async (req, res) => {
   }
 };
 
-/** PUT /api/reports/:internId/final-comment  Save final comment */
+// PUT /api/reports/:internId/final-comment
 exports.saveFinalComment = async (req, res) => {
   try {
     const { internId } = req.params;

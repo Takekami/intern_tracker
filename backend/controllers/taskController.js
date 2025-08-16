@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Task = require('../models/Task');
 
-// ===== GET /tasks =====
+// GET /tasks
 const getTasks = async (req, res) => {
   try {
     const isMentor = req.user?.role === 'mentor';
@@ -25,7 +25,7 @@ const getTasks = async (req, res) => {
   }
 };
 
-// ===== POST /tasks =====
+// POST /tasks
 const addTask = async (req, res) => {
   try {
     const { title, description, deadline, assignee } = req.body || {};
@@ -36,7 +36,6 @@ const addTask = async (req, res) => {
       description,
       deadline,
     };
-
 
     if (assignee !== undefined && assignee !== '' && mongoose.Types.ObjectId.isValid(assignee)) {
       payload.assignee = assignee;
@@ -55,7 +54,7 @@ const addTask = async (req, res) => {
   }
 };
 
-// ===== PUT /tasks/:id =====
+// PUT /tasks/:id
 const updateTask = async (req, res) => {
   try {
     const { title, description, completed, deadline, status, assignee } = req.body || {};
@@ -95,7 +94,7 @@ const updateTask = async (req, res) => {
   }
 };
 
-// ===== DELETE /tasks/:id =====
+// DELETE /tasks/:id
 const deleteTask = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
@@ -118,7 +117,7 @@ const deleteTask = async (req, res) => {
   }
 };
 
-// ===== PATCH /tasks/:id/status =====
+// PATCH /tasks/:id/status
 const updateTaskStatus = async (req, res) => {
   try {
     const { status } = req.body || {};

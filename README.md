@@ -4,7 +4,7 @@ Role-based app for mentors to manage remote interns (tasks, feedback, reports).
 
 **Live**
 
-* EC2 instance Public IP: http://13.55.160.228
+* EC2 instance Public URL: http://13.55.160.228
 
 * Demo user:
 
