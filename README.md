@@ -6,6 +6,9 @@ Role-based app for mentors to manage remote interns (tasks, feedback, reports).
 
 * EC2 instance Public URL: http://13.55.160.228
 
+Note: The EC2 public IP may change if the instance is restarted.
+In that case, please use the Quick Start instructions to run locally.
+
 * Demo user:
 
   Mentor:
@@ -18,6 +21,10 @@ Role-based app for mentors to manage remote interns (tasks, feedback, reports).
 
 * git clone https://github.com/Takekami/intern_tracker.git
 * cd intern_tracker
+* cd backend && npm install && npm run dev
+* cd frontend && npm install && npm start
+
+#Please set MONGO_URI, JWT_SECRET, and PORT in ".env".
 
 **What's in it**
 
