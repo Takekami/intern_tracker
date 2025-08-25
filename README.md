@@ -67,3 +67,5 @@ Jira : https://tkykmurakami.atlassian.net/jira/software/projects/INTERN/summary
 GitHub: https://github.com/Takekami/intern_tracker
 
 CI/CD (GitHub Actions): https://github.com/Takekami/intern_tracker/blob/main/.github/workflows/ci.yml
+
+
